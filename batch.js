@@ -1,78 +1,104 @@
-
-
-
-
 export async function main( ns){
-   // do Init process
-	ns. disableLog("ALL");
-	ns. clearLog();
 	
-	ns. write( "BotOneUse/hack.script", "hack(args[0])", "w");
-	ns. write( "BotOneUse/weak.script", "weaken(args[0])", "w");
-	ns. write( "BotOneUse/grow.script", "grow(args[0])", "w");
-    ns. print( "Static scripts created.\n");
-    
-	var delay = 10000; // 10s delay;
-	var servers = {
-		all: [],
-		targets: [],
-		slaves: [],
-		batching: [],
-	};
+	ns.disableLog("ALL");
+	ns.clearLog();
+	ns.tail();
 	
+	var target = ns. args[ 0];
+	var servers = [ ];
+	var slaves = [ ];
+	var delay = 45000; // 15s delay
 	
 	async function sortServers( ns, Server) {
 		Server = Server || await ns. getHostname();
 		if (await ns. hasRootAccess( Server) && await ns. getServerMaxRam( Server) > 0 ) {
-            servers. slaves. push([ Server ,[ await ns.getServerMaxRam( Server)]]);
-			ns. scp([ "BotOneUse/grow.script", "BotOneUse/hack.script", "BotOneUse/weak.script"], Server, "home");
+            slaves. push([ Server ,[ await ns.getServerMaxRam( Server)]]);
         }
-		if (await ns.getServerMaxMoney( Server) > 0 && await ns. getServerRequiredHackingLevel( Server) <= await ns.getHackingLevel() && await ns.hasRootAccess(Server)) {
-			let server = ns.getServer( Server);
-			let player = ns.getPlayer();
-			servers.targets. push([ Server ,[ 
-				await ns.getServerMaxMoney( Server), await ns. getServerMinSecurityLevel( Server),( ns. ls( Server). includes("formulas.exe") ? ns.formulas.hacking. hackTime(server, player)+ ns.formulas.hacking. growTime(server, player)+ ns.formulas.hacking. weakenTime( server, player) : ns. getHackTime( Server)+ ns. getWeakenTime( Server)+ ns. getGrowTime( Server) )
-			]]);
-        }
-        let scan = await ns. scan( Server);
-        for (let i = 0; i < scan. length; i++) {
-            if (! servers.all. includes( scan[ i])) {
-				try{
-					ns. relaysmtp( scan[ i]);
-				} catch {};
-				try{
-					ns. httpworm( scan[ i]);
-				} catch {};
-				try{
-					ns. ftpcrack( scan[ i]);
-				} catch {};
-				try{
-					ns. brutessh( scan[ i]);
-				} catch {};
-				try{
-					ns. sqlinject( scan[ i]);
-				} catch {};
-				try{
-					ns. nuke( scan[ i]);
-				} catch {};
-                servers.all. push(scan[ i]);
+        var scan = await ns. scan( Server);
+        for ( var i = 0; i < scan. length; i++) {
+            if (! servers. includes( scan[ i])) {
+                servers. push(scan[ i]);
                 await sortServers( ns, scan[ i]);
             }
         }
     }
     await sortServers( ns);
-	servers.targets. sort(function(a, b) {
-		return b[1][3] - a[1][3];
-	});
-	servers.batching. push( servers. targets[ 0]);
-	servers.batching. push( servers. targets[ 1]);
-	servers.batching. push( servers. targets[ 2]);
-	// exec serverTracker [ servers. batching ]
-	while( await ns. sleep( delay)){
-		for( let i = 0; i < servers.batching. length; i++){
-			// Prepare servers...
-			var growAndWeakenFully;
+	while( true){
+		while ( ns.getServerMinSecurityLevel( target) < ns.getServerSecurityLevel( target) || ns.getServerMaxMoney( target) > ns.getServerMoneyAvailable( target) ){
+			// Initial Prepare
+			var gThreads = Math.ceil(ns. growthAnalyze( target, ns. getServerMaxMoney( target)/ns. getServerMoneyAvailable( target), 1));
+			var wThreads = Math.ceil((ns. getServerSecurityLevel( target)- ns. getServerMinSecurityLevel( target))/ ns. weakenAnalyze( 1,1)+( gThreads/ 2));
 			
+			var Time = Date. now();
+			var gTime = await ns. getGrowTime( target);
+			var wTime = await ns. getWeakenTime( target);
+			var maxTime = Math. max( gTime, wTime)+ 3000;
+			var gStart = Time+ maxTime- gTime- 1000;
+			var wStart = Time+ maxTime- wTime- 2000;
+				
+			await deliverAndExecute( ns, "batching/grow.script", gThreads, slaves, target, gStart);
+			await deliverAndExecute( ns, "batching/weak.script", wThreads, slaves, target, wStart);
+			
+			var interval = maxTime/ 20;
+			for( var i = 0; i < 20; i++){
+				ns.clearLog();
+				ns. print( "		"+ target);
+				ns. print( "G+W ["+ "|". repeat( i)+ "-". repeat( 20- i)+"]");
+				await ns. sleep( interval);
+			};
 		};
-	};
+		
+		// Prepared.
+		
+		
+		var hThreads = Math. ceil((( await ns. getServerMaxMoney( target)* .25)/ await ns. getServerMaxMoney( target))/ await ns. hackAnalyze( target));
+		var wThreads = hThreads/ 4;
+		var gThreads = ns. growthAnalyze( target, 1.5, 1);
+		var wThreads2 = gThreads;
+		
+		var hTime = await ns. getHackTime( target);
+		var gTime = await ns. getGrowTime( target);
+		var wTime = await ns. getWeakenTime( target);
+		
+		var maxTime = Math. max( hTime, gTime, wTime)+ 25000;
+		
+		
+		while( ns.getServerMaxMoney( target)/2 < ns.getServerMoneyAvailable( target)){
+			
+			var Time = Date.now()+ maxTime;
+			
+			await deliverAndExecute( ns, "batching/hack.script", hThreads, slaves, target, Time- hTime- 20000);
+			await deliverAndExecute( ns, "batching/weak.script", wThreads, slaves, target, Time- wTime- 15000);
+			await deliverAndExecute( ns, "batching/grow.script", gThreads, slaves, target, Time- gTime- 10000);
+			await deliverAndExecute( ns, "batching/weak.script", wThreads2, slaves, target, Time- wTime- 5000);
+			
+			ns. print( "Batching");
+
+			await ns. sleep( delay);
+		}
+	}
 }
+
+async function deliverAndExecute( ns, file, threads, slaves, target, time){ // slaves: [ Server,[ maxRam]]
+	var ramUsage = ns. getScriptRam( file, "home");
+	for( let i = 0; i < slaves.length; i++ ){
+		await ns. scp( file, slaves[ slaves. length- i- 1][0], "home");
+		if ( threads == 0 ){
+			return true;
+		}
+		let ramAvailable = slaves[ slaves. length- i- 1][ 1][ 0] - ns. getServerUsedRam( slaves[ slaves. length- i- 1][ 0]);
+		if ( slaves[ slaves. length- i- 1][0] == "home"){
+			ramAvailable -= 64;
+		}
+		let threadsPossible = Math.abs( Math.ceil( Math.min( threads, Math. floor( ramAvailable/ ramUsage))));
+		if ( threadsPossible > 0 ){
+			var success = await ns. exec( file, slaves[ slaves. length- i- 1][ 0], threadsPossible, target, time);
+			if ( success == 0 ) {
+				ns. tprint( "Failed to execute "+ file+ "| on server "+ slaves[ slaves. length- i- 1][ 0]);
+			} else {
+				threads -= threadsPossible;
+			}
+		}
+	};
+	return false;
+};
