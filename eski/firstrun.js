@@ -12,12 +12,12 @@ export async function main( ns){
 	await ns. write( "eski/init/hack.script", "hack( 'foodnstuff')", "w");
 		
 	for ( var i = 0; i< 5; i++){
-    await ns. exec( "eski/init/weaken.script", "home", 2)
-    await ns. sleep( 230000);
-    await ns. exec( "eski/init/grow.script", "home", 2)
-    await ns. sleep( 230000);
-    await ns. exec( "eski/init/hack.script", "home", 2)
-    await ns. sleep( 230000);
+		await ns. exec( "eski/init/weaken.script", "home", 2)
+		await ns. sleep( 230000);
+		await ns. exec( "eski/init/grow.script", "home", 2)
+		await ns. sleep( 230000);
+		await ns. exec( "eski/init/hack.script", "home", 2)
+		await ns. sleep( 230000);
 	}
 	
 }
