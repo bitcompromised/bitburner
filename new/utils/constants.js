@@ -1,5 +1,5 @@
 
-export { player, server}
+export { player, server, logs}
 
 const player = {
     maxRam: 2**30,
@@ -21,13 +21,8 @@ const server= {
 
 const corporationConstants = {}
 
-const gangConstants = {
-    GangRespectToReputationRatio: 5, // Respect is divided by this to get rep gain
-    MaximumGangMembers: 30,
-    GangRecruitCostMultiplier: 2,
-    CyclesPerTerritoryAndPowerUpdate: 100,
-    AscensionMultiplierRatio: 15 / 100, // Portion of upgrade multiplier that is kept after ascending
-    GangNames: [
+const gangs = {
+    GANGS: [
         "Slum Snakes",
         "Tetrads",
         "The Syndicate",
@@ -36,91 +31,96 @@ const gangConstants = {
         "NiteSec",
         "The Black Hand"
     ],
+    RESPECT_TO_REPUTATION: 5, // Respect is divided by this to get rep gain
+    MAX_MEMBERS: 30,
+    RECRUITMENT_MULTIPLIER: 2,
+    CYCLES_TO_UPDATE: 100,
+    ACENTION_UPGRADES_KEPT_RATIO: 15 / 100, // Portion of upgrade multiplier that is kept after ascendin
 }
 
-const stockConstants = {
+const stocks = {
     // Stock market
-    WSEAccountCost: 200e6,
-    TIXAPICost: 5e9,
-    MarketData4SCost: 1e9,
-    MarketDataTixApi4SCost: 25e9,
-    StockMarketCommission: 100e3,
+    WSE_COST: 200e6,
+    TIX_COST: 5e9,
+    MARKET_4S_Cost: 1e9,
+    MARKET_TIX4S_COST: 25e9,
+    STOCK_COMMISSION: 100e3,
 }
 
-const cityConstants = {
-    // Hospital/Health
-    HospitalCostPerHp: 100e3,
+const cities = {
+    CITIES: [],
+    HOSPITAL_COST_PER_HP: 100e3,
 }
 
-const logConstants = {
-    possibleLogs: {
-        ALL: true,
-        scan: true,
-        hack: true,
-        sleep: true,
-        disableLog: true,
-        enableLog: true,
-        grow: true,
-        weaken: true,
-        nuke: true,
-        brutessh: true,
-        ftpcrack: true,
-        relaysmtp: true,
-        httpworm: true,
-        sqlinject: true,
-        run:true,
-        exec:true,
-        spawn: true,
-        kill: true,
-        killall: true,
-        scp: true,
-        getHackingLevel: true,
-        getServerMoneyAvailable: true,
-        getServerSecurityLevel: true,
-        getServerBaseSecurityLevel: true,
-        getServerMinSecurityLevel: true,
-        getServerRequiredHackingLevel: true,
-        getServerMaxMoney: true,
-        getServerGrowth: true,
-        getServerNumPortsRequired: true,
-        getServerRam: true,
-
-        // TIX API
-        buyStock: true,
-        sellStock: true,
-        shortStock: true,
-        sellShort: true,
-        purchase4SMarketData: true,
-        purchase4SMarketDataTixApi: true,
-
-        // Singularity Functions
-        purchaseServer: true,
-        deleteServer: true,
-        universityCourse: true,
-        gymWorkout: true,
-        travelToCity: true,
-        purchaseTor: true,
-        purchaseProgram: true,
-        stopAction: true,
-        upgradeHomeRam: true,
-        workForCompany: true,
-        applyToCompany: true,
-        joinFaction: true,
-        workForFaction: true,
-        donateToFaction: true,
-        createProgram: true,
-        commitCrime: true,
-
-        // Bladeburner API
-        startAction: true,
-        upgradeSkill: true,
-        setTeamSize: true,
-        joinBladeburnerFaction: true,
-
-        // Gang API
-        recruitMember: true,
-        setMemberTask: true,
-        purchaseEquipment: true,
-        setTerritoryWarfare: true,
-    }
+const logs = {
+    TOGGLED: {
+        ALL: false,
+        ERRORS: false,
+        WARNINGS: false,
+        INFORMATION: true,
+        LOG: true,
+    },
+    LOGS: [],
+    sendLog: ( ns, LOGS, TYPE = "ERROR", MESSAGE = "NO MESSAGE PROVIDED") => {
+        let HOST = ns. getHostname()
+        let SCRIPT = ns. getScriptName()
+        let TIME = Date.now();
+        let DATA = [TYPE, MESSAGE, SCRIPT, HOST, TIME];
+        switch( TYPE){
+            case "ERROR":
+                DATA. push( "\u001b[31m")
+                break
+            case "INFORMATION":
+                DATA. push( "\u001b[34m")
+                break
+            case "WARNING":
+                DATA. push( "\u001b[33m")
+                break
+            case "LOG":
+                DATA. push( "\u001b[3m")
+                break
+        }
+        LOGS. push( DATA)
+    },
+    getLogs: ( LOGS, TYPE, HOST, SCRIPT, START_TIME = 0) => {
+        let RESULTS = TYPE === "ALL" ? LOGS : LOGS
+            .filter( LOG => LOG[0] === TYPE);
+        RESULTS =( SCRIPT === "NONE") ? RESULTS : RESULTS
+            .filter( LOG => LOG[2].match( SCRIPT) !== null)
+        RESULTS = START_TIME === 0 ? RESULTS : RESULTS
+            .filter( LOG => LOG[3].match( HOST))
+        RESULTS = START_TIME === 0 ? RESULTS : RESULTS
+            .filter( LOG => LOG[4] > START_TIME)
+        return RESULTS
+    },
+    clearLogs: ( LOGS) =>{
+        LOGS.splice( 0, LOGS. length)
+        return LOGS
+    },
+    TEXT:{
+        RESET: "\u001b[0m",
+        COLORS: {
+            BACKGROUND: {
+                RED: "\u001b[41m",
+                GREEN: "\u001b[42m",
+                YELLOW: "\u001b[43m",
+                BLUE: "\u001b[44m",
+                PINK: "\u001b[45m",
+                CYAN: "\u001b[46m",
+                WHITE: "\u001b[47m",
+            },
+            GREY: "\u001b[30m",
+            RED: "\u001b[31m",
+            YELLOW: "\u001b[33m",
+            BLUE: "\u001b[34m",
+            PINK: "\u001b[35m",
+            CYAN: "\u001b[36m",
+            WHITE: "\u001b[37m",
+        },
+        STYLES: {
+            BOLD: "\u001b[1m",
+            ITALICS: "\u001b[3m",
+            UNDERLINE: "\u001b[4m",
+        },
+    },
 }
